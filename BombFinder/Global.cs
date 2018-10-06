@@ -10,7 +10,7 @@ namespace BombFinder
 {
     public static class Global
     {
-        public static BombField mainBombField { get; set; }
+        public static BombField MainBombField { get; set; }
         public static Label GameStatusLabel { get; set; }
     }
 }

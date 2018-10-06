@@ -16,7 +16,7 @@ namespace BombFinder.Items
         public int Bombs { get; set; }
         public int BombsLeft { get; set; }
         public int SafeSpacesLeft { get; set; }
-        public string Difficulty { get; set; }
+        public string Difficulty { get; private set; }
         public bool FirstPressSafe { get; set; }
         public Label BombsLeftLabel { get; set; }
 
@@ -32,15 +32,20 @@ namespace BombFinder.Items
             Array = new Space[height, width];
         }
 
+        public void LoadSpace(Space space, int height, int width)
+        {
+            Array[height, width] = space;
+        }
+
         public void LoadBombs()
         {
             bool underloaded = (Height * Width > Bombs * 2) ? true : false;
 
             if (!underloaded)
             {
-                for(int h = 0; h < Height; h++)
+                for (int h = 0; h < Height; h++)
                 {
-                    for(int w = 0; w < Width; w++)
+                    for (int w = 0; w < Width; w++)
                     {
                         Array[h, w].IsBomb = true;
                     }
@@ -73,9 +78,9 @@ namespace BombFinder.Items
                 int rWidth = rand.Next(Width);
 
                 Space space = Array[rHeight, rWidth];
-                if ((space.IsBomb == false) 
+                if ((space.IsBomb == false)
                     && (!(rHeight == y || rHeight == y - 1 || rHeight == y + 1)
-                    && !(rWidth == x || rWidth == x - 1 || rWidth == x + 1 )))
+                    && !(rWidth == x || rWidth == x - 1 || rWidth == x + 1)))
                 {
                     space.IsBomb = true;
                 }
@@ -90,6 +95,10 @@ namespace BombFinder.Items
 
         public void DecrementBomb()
         {
+            if (BombsLeft <= 0)
+            {
+                return;
+            }
             BombsLeftLabel.Text = (--BombsLeft).ToString();
         }
 
@@ -115,6 +124,36 @@ namespace BombFinder.Items
                 {
                     s.ChangeSpaceText("X", Color.Red);
                 }
+            }
+        }
+
+        public bool Press(Space space)
+        {
+            if (space.Status == SpaceStatus.Pressed)
+            {
+                return false;
+            }
+
+            if (space.IsBomb)
+            {
+                Explode(false);
+                return true;
+            }
+            else
+            {
+                if (space.Status == SpaceStatus.Flagged)
+                {
+                    IncrementBomb();
+                }
+
+                space.Status = SpaceStatus.Pressed;
+
+                if (CheckForNearbyBombs(space.X, space.Y) == 0)
+                {
+                    PressAllNearbyEmptySpaces(space.X, space.Y);
+                }
+                DecrementSafeSpace();
+                return false;
             }
         }
 
@@ -166,11 +205,41 @@ namespace BombFinder.Items
                         Space space = Array[yValue, xValue];
                         if (!(space.Status == SpaceStatus.Pressed))
                         {
-                            space.Press(this);
+                            Press(space);
                         }
                     }
                 }
             }
+        }
+
+        public int CheckForNearbyBombs(int X, int Y)
+        {
+            Space space = Array[Y, X];
+            int bombCount = 0;
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    if (((X + x) >= 0 && (X + x) < Array.GetLength(1))
+                        && ((Y + y) >= 0 && (Y + y) < Array.GetLength(0)))
+                    {
+                        if (Array[Y + y, X + x].IsBomb)
+                        {
+                            bombCount++;
+                        }
+                    }
+                }
+            }
+            if (bombCount == 0)
+            {
+                space.BackColor = Color.DarkGray;
+                space.ChangeSpaceText(String.Empty, Color.Black);
+            }
+            else
+            {
+                space.ChangeSpaceText(bombCount.ToString(), Color.Black);
+            }
+            return bombCount;
         }
     }
 }

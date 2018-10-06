@@ -62,30 +62,51 @@ namespace BombFinder
         private void spaceBtn_Click(object sender, MouseEventArgs e)
         {
             Space space = sender as Space;
+            BombField bf = Global.MainBombField;
             if (space.Status == SpaceStatus.Pressed)
             {
                 return;
             }
 
-            space.CheckIfFirstPressIsSafe(Global.mainBombField);
-
             if (e.Button == MouseButtons.Right)
             {
-                space.RightClick(Global.mainBombField);
-                    
+                if (space.Status == SpaceStatus.Empty && bf.BombsLeft <= 0)
+                {
+                    Global.GameStatusLabel.Text = "Out of Flags";
+                }
+                else
+                {
+                    SpaceStatus rc = space.RightClick();
+                    if (rc == SpaceStatus.Flagged)
+                    {
+                        bf.DecrementBomb();
+                    }
+                    else if (rc == SpaceStatus.Questioned)
+                    {
+                        bf.IncrementBomb();
+                    }
+                }
+
                 return;
             }
 
-            if(space.Press(Global.mainBombField))
+            if (bf.FirstPressSafe)
+            {
+                int bombs = bf.ClearNearbyBombs(space.X, space.Y);
+                bf.AddBombs(space.X, space.Y, bombs);
+                bf.FirstPressSafe = false;
+            }
+
+
+            if (bf.Press(space))
             {
                 Global.GameStatusLabel.Text = "BOOM!";
-                Global.mainBombField.Explode(false);
-                foreach(Space s in Global.mainBombField.Array)
+                foreach (Space s in bf.Array)
                 {
                     s.MouseUp -= spaceBtn_Click;
                 }
             }
-            else if(Global.mainBombField.SafeSpacesLeft == 0)
+            else if (bf.SafeSpacesLeft == 0)
             {
                 Global.GameStatusLabel.Text = "Nice!";
             }
@@ -100,11 +121,6 @@ namespace BombFinder
         {
             foreach (Control item in Controls.OfType<Control>())
             {
-                if (new string[] {"startBtn","difficultyGroupBox",
-                    "customRulesGroupBox", "gameLogo"}.Contains(item.Name))
-                {
-                    continue;
-                }
                 item.Visible = false;
             }
             ToggleMenuVisibility(true);
@@ -114,7 +130,7 @@ namespace BombFinder
         {
             Global.GameStatusLabel.Text = "";
 
-            BombField bf = Global.mainBombField;
+            BombField bf = Global.MainBombField;
             bf.BombsLeft = bf.Bombs;
             bf.SafeSpacesLeft = (bf.Height * bf.Width) - bf.Bombs;
             bf.BombsLeftLabel.Text = bf.BombsLeft.ToString();
@@ -136,7 +152,7 @@ namespace BombFinder
 
         private void ToggleMenuVisibility(bool visible)
         {
-            if(visible)
+            if (visible)
                 Size = new Size(390, 313);
 
             startBtn.Visible = visible;
@@ -147,11 +163,11 @@ namespace BombFinder
 
         private void CreateBombField(int height, int width, int bombs, string difficulty, bool firstPressSafe)
         {
-            Global.mainBombField = new BombField(height, width, bombs, difficulty, firstPressSafe);
+            Global.MainBombField = new BombField(height, width, bombs, difficulty, firstPressSafe);
             Size = new Size(width * 18 + 150, height * 18 + 120);
-            for(int h = 0; h < height; h++)
+            for (int h = 0; h < height; h++)
             {
-                for(int w = 0; w < width; w++)
+                for (int w = 0; w < width; w++)
                 {
                     Space button = new Space(w, h);
 
@@ -159,7 +175,7 @@ namespace BombFinder
                     button.Location = new Point(w * 18 + 20, h * 18 + 20);
                     button.Font = new Font(button.Font, FontStyle.Bold);
                     button.MouseUp += new MouseEventHandler(spaceBtn_Click);
-                    Global.mainBombField.Array[h, w] = button;
+                    Global.MainBombField.LoadSpace(button, h, w);
 
                     Controls.Add(button);
                 }
@@ -193,10 +209,10 @@ namespace BombFinder
             Controls.Add(quitBtn);
             Controls.Add(Global.GameStatusLabel);
 
-            Global.mainBombField.BombsLeft = bombs;
-            Global.mainBombField.BombsLeftLabel = numberOfBombsLeftLabel;
+            Global.MainBombField.BombsLeft = bombs;
+            Global.MainBombField.BombsLeftLabel = numberOfBombsLeftLabel;
 
-            Global.mainBombField.LoadBombs();
+            Global.MainBombField.LoadBombs();
         }
     }
 }
